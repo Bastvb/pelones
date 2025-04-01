@@ -14,6 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // --- MESAS ---
     if ($accion === "agregar_mesa") {
+        // Insertamos una nueva mesa
         $sql = "INSERT INTO mesa (numero, estado) VALUES (0, 'libre')";
         $pdo->exec($sql);
 
@@ -26,12 +27,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // --- CREAR PEDIDO (múltiples platillos) ---
     if ($accion === "crear_pedido_multiple") {
-        $mesa_id      = $_POST["mesa_id"] ?? 0;
-        $mesero_id    = $_SESSION["mesero_id"];
-        $mesero_name  = $_SESSION["mesero_nombre"] ?? "";
-        $fecha        = date("Y-m-d"); // o CURDATE()
+        $mesa_id     = $_POST["mesa_id"] ?? 0;
+        $mesero_id   = $_SESSION["mesero_id"];
+        $mesero_name = $_SESSION["mesero_nombre"] ?? "";
+        $fecha       = date("Y-m-d"); 
 
-        // 1) Insertamos en "pedido" (encabezado)
+        // 1) Insertar pedido (encabezado)
         $sqlPedido = "INSERT INTO pedido 
                       (fecha, estado, mesa_id, mesero_id, mesero, total)
                       VALUES
@@ -46,8 +47,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $pedido_id = $pdo->lastInsertId();
 
         // 2) Insertar ítems en "pedido_detalle"
-        $items    = $_POST["items"] ?? [];
-        $quantity = $_POST["quantity"] ?? [];
+        $items    = $_POST["items"] ?? [];    // checkboxes marcados
+        $quantity = $_POST["quantity"] ?? []; // cantidades
 
         foreach ($items as $menuId => $onValue) {
             $cant = isset($quantity[$menuId]) ? (int)$quantity[$menuId] : 1;
@@ -64,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ]);
         }
 
-        // --- NUEVO: marcar la mesa como "Pedido pendiente de [mesero]" ---
+        // Cambiamos el estado de la mesa
         $sqlUpdMesa = "UPDATE mesa
                        SET estado = CONCAT('Pedido pendiente de ', :mesero)
                        WHERE id = :mesa_id";
@@ -79,7 +80,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($accion === "completar_pedido") {
         $pedido_id = $_POST["pedido_id"] ?? 0;
 
-        // 1) Calcular suma de (precio * cantidad)
+        // 1) Calcular la suma real en BD
         $sqlSum = "SELECT SUM(pd.cantidad * m.precio) AS totalCalculado
                    FROM pedido_detalle pd
                    JOIN menu m ON pd.menu_id = m.id
@@ -102,14 +103,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ":id"    => $pedido_id
         ]);
 
-        // --- NUEVO: tomar mesa_id de este pedido y ponerla "libre" ---
+        // Marcar mesa como "libre"
         $sqlMesaId = "SELECT mesa_id FROM pedido WHERE id = :id LIMIT 1";
         $stmtMesa = $pdo->prepare($sqlMesaId);
         $stmtMesa->execute([":id" => $pedido_id]);
         $mesaRow = $stmtMesa->fetch(PDO::FETCH_ASSOC);
         if ($mesaRow) {
             $mesaActual = $mesaRow["mesa_id"];
-            // Regresamos la mesa a "libre"
             $sqlMesaLibre = "UPDATE mesa
                              SET estado = 'libre'
                              WHERE id = :idm";
@@ -122,7 +122,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($accion === "eliminar_pedido") {
         $pedido_id = $_POST["pedido_id"] ?? 0;
         
-        // Tomar mesa_id antes de eliminar
         $sqlMesaId = "SELECT mesa_id FROM pedido WHERE id = :id LIMIT 1";
         $stmtMesa = $pdo->prepare($sqlMesaId);
         $stmtMesa->execute([":id" => $pedido_id]);
@@ -133,12 +132,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmtDel = $pdo->prepare($sqlDelDet);
         $stmtDel->execute([":pid" => $pedido_id]);
 
-        // Luego eliminar pedido
+        // Eliminar encabezado
         $sqlDelPed = "DELETE FROM pedido WHERE id = :id";
         $stmtDel2 = $pdo->prepare($sqlDelPed);
         $stmtDel2->execute([":id" => $pedido_id]);
 
-        // --- NUEVO: si existía esa mesa, ponerla libre ---
+        // Mesa a "libre"
         if ($rowMesa) {
             $mesaLibre = $rowMesa["mesa_id"];
             $sqlMesaLibre = "UPDATE mesa
@@ -171,7 +170,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->execute([":id" => $id_menu]);
     }
 
-    // Redirigir al final para evitar reenvío del formulario
     header("Location: home.php");
     exit;
 }
@@ -224,19 +222,51 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
     }
     return $agrupados;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Home - Restaurante</title>
+    <!-- Un poco de JS para el cálculo previo -->
+    <script>
+    function calcTotal() {
+        let total = 0;
+        // Para cada checkbox con clase .check-platillo
+        const checkboxes = document.querySelectorAll('.check-platillo');
+        checkboxes.forEach(chk => {
+            // chk.dataset.price => precio del platillo
+            // chk.dataset.id => id del platillo
+            const price  = parseFloat(chk.dataset.price) || 0;
+            const id     = chk.dataset.id;
+            // Buscamos el input de cantidad correspondiente
+            const qtyInput = document.getElementById('qty-' + id);
+            let qty = parseFloat(qtyInput.value) || 0;
+
+            if (chk.checked) {
+                total += (price * qty);
+            }
+        });
+        // Mostramos el total en un <span>
+        document.getElementById('estimated-total').textContent = total.toFixed(2);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        // Iniciar el cálculo cuando cargue la página
+        calcTotal();
+        // Si cambian algo, recalculamos
+        const inputs = document.querySelectorAll('.check-platillo, .qty-input');
+        inputs.forEach(el => {
+            el.addEventListener('change', calcTotal);
+            el.addEventListener('keyup', calcTotal);
+        });
+    });
+    </script>
 </head>
 <body>
 <div class="container">
     <h1>Bienvenido, <?php echo htmlspecialchars($_SESSION["mesero_nombre"] ?? '', ENT_QUOTES); ?></h1>
 
-    <!-- Acciones de navegación -->
     <a href="corte.php">Ir al Corte de Caja</a> |
     <a href="logout.php">Cerrar Sesión</a>
     <hr>
@@ -247,11 +277,7 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
         <?php foreach ($mesas as $m): ?>
             <div style="border:1px solid #ccc; margin:5px; padding:10px; min-width:150px;">
                 <h4>Mesa ID: <?php echo $m['id']; ?></h4>
-                <p>Número: <?php echo $m['numero']; ?></p>
-                <!-- La columna 'estado' ya puede tener "libre" o "Pedido pendiente de X" -->
                 <p>Estado: <?php echo $m['estado']; ?></p>
-
-                <!-- Eliminar mesa -->
                 <form method="POST"
                       onsubmit="return confirm('¿Seguro que deseas eliminar esta mesa?');">
                     <input type="hidden" name="accion" value="eliminar_mesa">
@@ -262,16 +288,15 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
         <?php endforeach; ?>
     </div>
     <br>
-    <!-- Agregar mesa -->
     <form method="POST">
         <input type="hidden" name="accion" value="agregar_mesa">
         <button type="submit">Agregar Nueva Mesa</button>
     </form>
     <hr>
 
-    <!-- CREAR PEDIDO (múltiples platillos) -->
+    <!-- CREAR PEDIDO -->
     <h2>Crear Pedido</h2>
-    <p>Elige la mesa y marca los platillos (con su cantidad) para este pedido.</p>
+    <p>Selecciona la mesa y los platillos. El total estimado se mostrará abajo.</p>
     <form method="POST">
         <input type="hidden" name="accion" value="crear_pedido_multiple">
         
@@ -288,16 +313,38 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
 
         <h4>Platillos del Menú:</h4>
         <?php foreach ($menus as $mn): ?>
+            <?php 
+              $idPlatillo = $mn['id'];
+              $precio     = $mn['precio'];
+            ?>
             <div style="margin-bottom:5px;">
                 <label>
-                    <input type="checkbox" name="items[<?php echo $mn['id']; ?>]" value="on">
-                    <?php echo $mn['nombre'] . " ($" . $mn['precio'] . ")"; ?>
+                    <input 
+                        type="checkbox"
+                        class="check-platillo"
+                        name="items[<?php echo $idPlatillo; ?>]"
+                        value="on"
+                        data-price="<?php echo $precio; ?>"
+                        data-id="<?php echo $idPlatillo; ?>"
+                    >
+                    <?php echo $mn['nombre'] . " ($" . $precio . ")"; ?>
                 </label>
                 &nbsp; Cantidad:
-                <input type="number" name="quantity[<?php echo $mn['id']; ?>]" 
-                       value="1" style="width:60px;">
+                <input 
+                    type="number"
+                    id="qty-<?php echo $idPlatillo; ?>"
+                    name="quantity[<?php echo $idPlatillo; ?>]"
+                    value="1"
+                    min="1"
+                    class="qty-input"
+                    style="width:60px;"
+                >
             </div>
         <?php endforeach; ?>
+        
+        <!-- Mostrar total estimado -->
+        <p>Total Estimado: $<span id="estimated-total">0.00</span></p>
+
         <button type="submit">Crear Pedido</button>
     </form>
     <hr>
@@ -308,18 +355,17 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
         <p>No hay pedidos pendientes.</p>
     <?php else: ?>
         <?php foreach ($pendientes as $p): ?>
-            <?php 
-            // Cargar detalles agrupados por categoría
+            <?php
+            // Cargar detalles
             $detalles = obtenerDetallesAgrupados($pdo, $p['id']);
             ?>
             <div style="border:1px dashed #888; margin:10px; padding:10px;">
                 <strong>Pedido #<?php echo $p['id']; ?></strong><br>
                 Fecha: <?php echo $p['fecha']; ?><br>
                 Estado: <?php echo $p['estado']; ?><br>
-                Mesa ID: <?php echo $p['mesa_id']; ?><br>
+                Mesa: <?php echo $p['mesa_id']; ?><br>
                 Mesero: <?php echo $p['mesero']; ?><br>
 
-                <!-- Mostrar los items -->
                 <h4>Detalle de productos:</h4>
                 <?php if (empty($detalles)): ?>
                     <p><em>No se han agregado platillos a este pedido.</em></p>
@@ -332,8 +378,8 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                 $subtotal = $it['precio'] * $it['cantidad'];
                                 ?>
                                 <li>
-                                    <?php echo $it['nombre']; ?> 
-                                    ( $<?php echo $it['precio']; ?> x <?php echo $it['cantidad']; ?> ) 
+                                    <?php echo $it['nombre']; ?>
+                                    ( $<?php echo $it['precio']; ?> x <?php echo $it['cantidad']; ?> )
                                     = <strong>$<?php echo $subtotal; ?></strong>
                                 </li>
                             <?php endforeach; ?>
@@ -341,7 +387,6 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                     <?php endforeach; ?>
                 <?php endif; ?>
 
-                <!-- Botones para completar/eliminar -->
                 <form method="POST" 
                       onsubmit="return confirm('¿Seguro de COMPLETAR este pedido?');"
                       style="display:inline-block;">
@@ -350,7 +395,7 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                     <button type="submit">Completar Pedido</button>
                 </form>
 
-                &nbsp; 
+                &nbsp;
 
                 <form method="POST" 
                       onsubmit="return confirm('¿Seguro de ELIMINAR este pedido?');"
@@ -371,18 +416,16 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
     <?php else: ?>
         <?php foreach ($completados as $c): ?>
             <?php 
-            // Cargar detalles agrupados por categoría
-            $detallesC = obtenerDetallesAgrupados($pdo, $c['id']);
+            $detallesC = obtenerDetallesAgrupados($pdo, $c['id']); 
             ?>
             <div style="border:1px solid #ccc; margin:10px; padding:10px;">
                 <strong>Pedido #<?php echo $c['id']; ?></strong><br>
                 Fecha: <?php echo $c['fecha']; ?><br>
                 Estado: <?php echo $c['estado']; ?><br>
                 Total: $<?php echo $c['total']; ?><br>
-                Mesa ID: <?php echo $c['mesa_id']; ?><br>
+                Mesa: <?php echo $c['mesa_id']; ?><br>
                 Mesero: <?php echo $c['mesero']; ?><br>
 
-                <!-- Mostrar los items agrupados -->
                 <h4>Detalle de productos:</h4>
                 <?php if (empty($detallesC)): ?>
                     <p><em>No se han agregado platillos a este pedido.</em></p>
@@ -391,12 +434,12 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                         <p><strong><?php echo $cat; ?></strong></p>
                         <ul>
                             <?php foreach ($itemsCat as $it): ?>
-                                <?php
+                                <?php 
                                 $subtotal = $it['precio'] * $it['cantidad'];
                                 ?>
                                 <li>
-                                    <?php echo $it['nombre']; ?> 
-                                    ( $<?php echo $it['precio']; ?> x <?php echo $it['cantidad']; ?> ) 
+                                    <?php echo $it['nombre']; ?>
+                                    ( $<?php echo $it['precio']; ?> x <?php echo $it['cantidad']; ?> )
                                     = <strong>$<?php echo $subtotal; ?></strong>
                                 </li>
                             <?php endforeach; ?>
@@ -425,7 +468,6 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
             <option value="Desayuno">Desayuno</option>
             <option value="Bebidas">Bebidas</option>
         </select>
-
         <button type="submit">Agregar</button>
     </form>
 
@@ -445,7 +487,6 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                 <td><?php echo $mn['precio']; ?></td>
                 <td><?php echo $mn['categoria']; ?></td>
                 <td>
-                    <!-- Eliminar Platillo -->
                     <form method="POST"
                           onsubmit="return confirm('¿Eliminar este platillo?');"
                           style="display:inline;">
