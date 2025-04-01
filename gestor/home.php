@@ -210,7 +210,7 @@ $mesas = $pdo->query($sqlMesas)->fetchAll(PDO::FETCH_ASSOC);
 // si tienes la columna 'activo', puedes filtrar los activos para mostrarlos en la parte de "Crear Pedido".
 // Ejemplo:
 //   $sqlMenu = "SELECT * FROM menu WHERE activo=1 ORDER BY id";
-//   Así no muestras los “ocultos”.
+//   Así no muestras los "ocultos".
 // Pero en la tabla final, mostramos todos
 $sqlMenu = "SELECT * FROM menu ORDER BY id";
 $menus = $pdo->query($sqlMenu)->fetchAll(PDO::FETCH_ASSOC);
@@ -267,8 +267,573 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Home - Restaurante</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Restaurante</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="container">
+                <div class="header-content">
+                    <h1 class="app-title">
+                        <i class="fas fa-utensils"></i> Sistema de Restaurante
+                    </h1>
+                    <div class="user-info">
+                        <span class="user-name"><?php echo htmlspecialchars($_SESSION["mesero_nombre"] ?? '', ENT_QUOTES); ?></span>
+                        <button class="dark-mode-toggle" id="darkModeToggle">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                        <a href="logout.php" class="btn btn-sm btn-danger btn-icon">
+                            <i class="fas fa-sign-out-alt"></i> Salir
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="app-nav">
+            <div class="container">
+                <ul class="nav-tabs" id="navTabs">
+                    <li class="nav-item">
+                        <a href="#mesas" class="nav-link active" data-view="mesas">
+                            <i class="fas fa-chair"></i> Mesas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#nuevo-pedido" class="nav-link" data-view="nuevo-pedido">
+                            <i class="fas fa-plus-circle"></i> Nuevo Pedido
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#pedidos-pendientes" class="nav-link" data-view="pedidos-pendientes">
+                            <i class="fas fa-clock"></i> Pendientes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#pedidos-completados" class="nav-link" data-view="pedidos-completados">
+                            <i class="fas fa-check-circle"></i> Completados
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#menu" class="nav-link" data-view="menu">
+                            <i class="fas fa-book-open"></i> Menú
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="corte.php" class="nav-link">
+                            <i class="fas fa-cash-register"></i> Corte
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Content -->
+        <main class="app-content">
+            <div class="container">
+                <!-- Mesas View -->
+                <section id="mesas" class="view active fade-in">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-chair"></i> Gestión de Mesas</h2>
+                            <form method="POST">
+                                <input type="hidden" name="accion" value="agregar_mesa">
+                                <button type="submit" class="btn btn-primary btn-icon">
+                                    <i class="fas fa-plus"></i> Agregar Mesa
+                                </button>
+                            </form>
+                        </div>
+                        <div class="card-body">
+                            <div class="mesa-grid">
+                                <?php foreach ($mesas as $m): ?>
+                                    <?php 
+                                    $mesaClass = 'mesa-card';
+                                    if ($m['estado'] === 'libre') {
+                                        $mesaClass .= ' libre';
+                                        $estadoBadge = '<span class="badge badge-success">Libre</span>';
+                                    } elseif (strpos($m['estado'], 'Pedido pendiente') !== false) {
+                                        $mesaClass .= ' pendiente';
+                                        $estadoBadge = '<span class="badge badge-warning">Pendiente</span>';
+                                    } else {
+                                        $mesaClass .= ' ocupada';
+                                        $estadoBadge = '<span class="badge badge-danger">Ocupada</span>';
+                                    }
+                                    ?>
+                                    <div class="<?php echo $mesaClass; ?>">
+                                        <div class="mesa-header">
+                                            <h3 class="mesa-title">Mesa #<?php echo $m['id']; ?></h3>
+                                            <?php echo $estadoBadge; ?>
+                                        </div>
+                                        <p class="mesa-status"><?php echo $m['estado']; ?></p>
+                                        <div class="mesa-actions">
+                                            <form method="POST" onsubmit="return confirm('¿Seguro de eliminar esta mesa?');">
+                                                <input type="hidden" name="accion" value="eliminar_mesa">
+                                                <input type="hidden" name="id_mesa" value="<?php echo $m['id']; ?>">
+                                                <button type="submit" class="btn btn-danger btn-sm btn-icon">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Nuevo Pedido View -->
+                <section id="nuevo-pedido" class="view fade-in">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-plus-circle"></i> Crear Nuevo Pedido</h2>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <input type="hidden" name="accion" value="crear_pedido_multiple">
+
+                                <div class="form-group">
+                                    <label for="mesa_id" class="form-label">Seleccionar Mesa:</label>
+                                    <select name="mesa_id" id="mesa_id" required class="form-select">
+                                        <option value="">--Selecciona una mesa--</option>
+                                        <?php foreach ($mesas as $m): ?>
+                                        <option value="<?php echo $m['id']; ?>">
+                                            Mesa #<?php echo $m['id']; ?> (<?php echo $m['estado']; ?>)
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <h3 class="mb-3">Seleccionar Platillos:</h3>
+                                <div class="menu-items">
+                                    <?php foreach ($menus as $mn): ?>
+                                        <?php 
+                                        $idP = $mn['id'];
+                                        $prc = $mn['precio'];
+                                        ?>
+                                        <div class="menu-item">
+                                            <div class="menu-item-check">
+                                                <input 
+                                                    type="checkbox"
+                                                    class="form-check-input check-platillo"
+                                                    name="items[<?php echo $idP; ?>]"
+                                                    value="on"
+                                                    data-price="<?php echo $prc; ?>"
+                                                    data-id="<?php echo $idP; ?>"
+                                                    id="item-<?php echo $idP; ?>"
+                                                >
+                                            </div>
+                                            <div class="menu-item-info">
+                                                <label for="item-<?php echo $idP; ?>" class="menu-item-name">
+                                                    <?php echo $mn['nombre']; ?>
+                                                </label>
+                                                <div class="menu-item-price">
+                                                    $<?php echo $mn['precio']; ?> - <?php echo $mn['categoria']; ?>
+                                                </div>
+                                            </div>
+                                            <div class="menu-item-quantity">
+                                                <label for="qty-<?php echo $idP; ?>" class="menu-item-quantity-label">Cantidad:</label>
+                                                <input 
+                                                    type="number"
+                                                    id="qty-<?php echo $idP; ?>"
+                                                    name="quantity[<?php echo $idP; ?>]"
+                                                    value="1"
+                                                    min="1"
+                                                    class="menu-item-quantity-input qty-input"
+                                                >
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <div class="total-box">
+                                    <span class="total-label">Total Estimado:</span>
+                                    <span class="total-value">$<span id="estimated-total">0.00</span></span>
+                                </div>
+                                <button type="submit" class="btn btn-success btn-lg btn-icon">
+                                    <i class="fas fa-save"></i> Crear Pedido
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Pedidos Pendientes View -->
+                <section id="pedidos-pendientes" class="view fade-in">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-clock"></i> Pedidos Pendientes</h2>
+                        </div>
+                        <div class="card-body">
+                            <?php if (empty($pendientes)): ?>
+                                <p class="text-center">No tienes pedidos pendientes.</p>
+                            <?php else: ?>
+                                <?php foreach ($pendientes as $p): ?>
+                                    <?php $det = obtenerDetallesAgrupados($pdo, $p['id']); ?>
+                                    <div class="pedido-card pendiente">
+                                        <div class="pedido-header">
+                                            <h3 class="pedido-title">
+                                                <i class="fas fa-receipt"></i> Pedido #<?php echo $p['id']; ?>
+                                            </h3>
+                                            <span class="badge badge-warning">Pendiente</span>
+                                        </div>
+                                        <div class="pedido-body">
+                                            <div class="pedido-info">
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Fecha:</span>
+                                                    <span class="pedido-info-value"><?php echo $p['fecha']; ?></span>
+                                                </div>
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Mesa:</span>
+                                                    <span class="pedido-info-value">#<?php echo $p['mesa_id']; ?></span>
+                                                </div>
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Mesero:</span>
+                                                    <span class="pedido-info-value"><?php echo $p['mesero']; ?></span>
+                                                </div>
+                                            </div>
+
+                                            <div class="pedido-detalle">
+                                                <h4>Detalle del Pedido:</h4>
+                                                <?php if (empty($det)): ?>
+                                                    <p><em>No hay platillos en este pedido.</em></p>
+                                                <?php else: ?>
+                                                    <?php foreach ($det as $cat => $arr): ?>
+                                                        <h5 class="pedido-categoria"><?php echo $cat; ?></h5>
+                                                        <ul class="pedido-items">
+                                                        <?php foreach ($arr as $itm): ?>
+                                                            <?php 
+                                                            $sub = $itm['precio'] * $itm['cantidad'];
+                                                            ?>
+                                                            <li class="pedido-item">
+                                                                <span><?php echo $itm['nombre']." ($".$itm['precio']." x ".$itm['cantidad'].")"; ?></span>
+                                                                <span>$<?php echo $sub; ?></span>
+                                                            </li>
+                                                        <?php endforeach; ?>
+                                                        </ul>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <div class="pedido-actions">
+                                                <form method="POST" onsubmit="return confirm('¿Completar este pedido?');">
+                                                    <input type="hidden" name="accion" value="completar_pedido">
+                                                    <input type="hidden" name="pedido_id" value="<?php echo $p['id']; ?>">
+                                                    <button type="submit" class="btn btn-success btn-icon">
+                                                        <i class="fas fa-check"></i> Completar
+                                                    </button>
+                                                </form>
+                                                <form method="POST" onsubmit="return confirm('¿Eliminar este pedido?');">
+                                                    <input type="hidden" name="accion" value="eliminar_pedido">
+                                                    <input type="hidden" name="pedido_id" value="<?php echo $p['id']; ?>">
+                                                    <button type="submit" class="btn btn-danger btn-icon">
+                                                        <i class="fas fa-trash"></i> Eliminar
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Pedidos Completados View -->
+                <section id="pedidos-completados" class="view fade-in">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-check-circle"></i> Pedidos Completados</h2>
+                        </div>
+                        <div class="card-body">
+                            <?php if (empty($completados)): ?>
+                                <p class="text-center">No hay pedidos completados.</p>
+                            <?php else: ?>
+                                <?php foreach ($completados as $c): ?>
+                                    <?php $detC = obtenerDetallesAgrupados($pdo, $c['id']); ?>
+                                    <div class="pedido-card completado">
+                                        <div class="pedido-header">
+                                            <h3 class="pedido-title">
+                                                <i class="fas fa-receipt"></i> Pedido #<?php echo $c['id']; ?>
+                                            </h3>
+                                            <span class="badge badge-success">Completado</span>
+                                        </div>
+                                        <div class="pedido-body">
+                                            <div class="pedido-info">
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Fecha:</span>
+                                                    <span class="pedido-info-value"><?php echo $c['fecha']; ?></span>
+                                                </div>
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Mesa:</span>
+                                                    <span class="pedido-info-value">#<?php echo $c['mesa_id']; ?></span>
+                                                </div>
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Mesero:</span>
+                                                    <span class="pedido-info-value"><?php echo $c['mesero']; ?></span>
+                                                </div>
+                                                <div class="pedido-info-item">
+                                                    <span class="pedido-info-label">Total:</span>
+                                                    <span class="pedido-info-value text-success fw-bold">$<?php echo $c['total']; ?></span>
+                                                </div>
+                                            </div>
+
+                                            <div class="pedido-detalle">
+                                                <h4>Detalle del Pedido:</h4>
+                                                <?php if (empty($detC)): ?>
+                                                    <p><em>No hay platillos en este pedido.</em></p>
+                                                <?php else: ?>
+                                                    <?php foreach ($detC as $cat => $arr): ?>
+                                                        <h5 class="pedido-categoria"><?php echo $cat; ?></h5>
+                                                        <ul class="pedido-items">
+                                                        <?php foreach ($arr as $itm): ?>
+                                                            <?php 
+                                                            $sub = $itm['precio'] * $itm['cantidad'];
+                                                            ?>
+                                                            <li class="pedido-item">
+                                                                <span><?php echo $itm['nombre']." ($".$itm['precio']." x ".$itm['cantidad'].")"; ?></span>
+                                                                <span>$<?php echo $sub; ?></span>
+                                                            </li>
+                                                        <?php endforeach; ?>
+                                                        </ul>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Menu View -->
+                <section id="menu" class="view fade-in">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-book-open"></i> Gestión del Menú</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h3>Agregar Nuevo Platillo</h3>
+                                </div>
+                                <div class="card-body">
+                                    <form method="POST" class="row">
+                                        <input type="hidden" name="accion" value="agregar_menu">
+                                        
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="form-group">
+                                                <label class="form-label">Nombre:</label>
+                                                <input type="text" name="nombre" required class="form-control">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="form-group">
+                                                <label class="form-label">Precio:</label>
+                                                <input type="number" step="0.01" name="precio" required class="form-control">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="form-group">
+                                                <label class="form-label">Categoría:</label>
+                                                <select name="categoria" required class="form-select">
+                                                    <option value="Comida">Comida</option>
+                                                    <option value="Desayuno">Desayuno</option>
+                                                    <option value="Bebidas">Bebidas</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-12 mt-3">
+                                            <button type="submit" class="btn btn-primary btn-icon">
+                                                <i class="fas fa-plus"></i> Agregar Platillo
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Listado del Menú</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Nombre</th>
+                                                    <th>Precio</th>
+                                                    <th>Categoría</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($menus as $mn): ?>
+                                                    <tr>
+                                                        <td><?php echo $mn['id']; ?></td>
+                                                        <td><?php echo $mn['nombre']; ?></td>
+                                                        <td>$<?php echo $mn['precio']; ?></td>
+                                                        <td><?php echo $mn['categoria']; ?></td>
+                                                        <td>
+                                                            <div class="d-flex gap-2">
+                                                                <!-- Botón EDITAR -->
+                                                                <button 
+                                                                class="btn btn-sm btn-primary btn-icon-only"
+                                                                onclick="mostrarFormEditar(
+                                                                    <?php echo $mn['id'];?>,
+                                                                    '<?php echo addslashes($mn['nombre']);?>',
+                                                                    '<?php echo $mn['precio'];?>',
+                                                                    '<?php echo addslashes($mn['categoria']);?>'
+                                                                )">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </button>
+
+                                                                <!-- Botón OCULTAR -->
+                                                                <form method="POST"
+                                                                    onsubmit="return confirm('¿Ocultar este platillo?');">
+                                                                    <input type="hidden" name="accion" value="ocultar_menu">
+                                                                    <input type="hidden" name="id_menu" value="<?php echo $mn['id']; ?>">
+                                                                    <button type="submit" class="btn btn-sm btn-warning btn-icon-only">
+                                                                        <i class="fas fa-eye-slash"></i>
+                                                                    </button>
+                                                                </form>
+
+                                                                <!-- Botón ELIMINAR -->
+                                                                <form method="POST"
+                                                                    onsubmit="return confirm('¿Eliminar físicamente este platillo?');">
+                                                                    <input type="hidden" name="accion" value="eliminar_menu">
+                                                                    <input type="hidden" name="id_menu" value="<?php echo $mn['id']; ?>">
+                                                                    <button type="submit" class="btn btn-sm btn-danger btn-icon-only">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FORMULARIO OCULTO EDITAR -->
+                            <div id="formEditar" style="display:none;">
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h3>Editar Platillo</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <form method="POST">
+                                            <input type="hidden" name="accion" value="editar_menu">
+                                            <input type="hidden" id="id_menu_edit" name="id_menu" value="">
+                                            
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Nombre:</label>
+                                                        <input type="text" id="nombre_edit" name="nombreEdit" required class="form-control">
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-4">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Precio:</label>
+                                                        <input type="number" step="0.01" id="precio_edit" name="precioEdit" required class="form-control">
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-4">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Categoría:</label>
+                                                        <input type="text" id="cat_edit" name="catEdit" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex gap-2 mt-3">
+                                                <button type="submit" class="btn btn-success btn-icon">
+                                                    <i class="fas fa-save"></i> Guardar Cambios
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-icon" onclick="document.getElementById('formEditar').style.display='none';">
+                                                    <i class="fas fa-times"></i> Cancelar
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
     <script>
+    // Tab navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabs = document.querySelectorAll('.nav-link');
+        const views = document.querySelectorAll('.view');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const viewId = this.getAttribute('data-view');
+                if (!viewId) return; // Skip for external links
+                
+                // Remove active class from all tabs and views
+                tabs.forEach(t => t.classList.remove('active'));
+                views.forEach(v => v.classList.remove('active'));
+                
+                // Add active class to current tab and view
+                this.classList.add('active');
+                document.getElementById(viewId).classList.add('active');
+            });
+        });
+        
+        // Calculate total for new order
+        calcTotal();
+        let inputs = document.querySelectorAll('.check-platillo, .qty-input');
+        inputs.forEach(i => {
+            i.addEventListener('change', calcTotal);
+            i.addEventListener('keyup', calcTotal);
+        });
+        
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const body = document.body;
+        
+        // Check for saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            body.classList.add('dark-mode');
+            darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        }
+        
+        darkModeToggle.addEventListener('click', function() {
+            body.classList.toggle('dark-mode');
+            
+            if (body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                this.innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                localStorage.setItem('theme', 'light');
+                this.innerHTML = '<i class="fas fa-moon"></i>';
+            }
+        });
+    });
+
     function calcTotal() {
         let total = 0;
         const checks = document.querySelectorAll('.check-platillo');
@@ -290,295 +855,13 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
         document.getElementById('nombre_edit').value   = nombre;
         document.getElementById('precio_edit').value   = precio;
         document.getElementById('cat_edit').value      = cat;
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        calcTotal();
-        let inputs = document.querySelectorAll('.check-platillo, .qty-input');
-        inputs.forEach(i => {
-            i.addEventListener('change', calcTotal);
-            i.addEventListener('keyup', calcTotal);
+        
+        // Scroll to edit form
+        document.getElementById('formEditar').scrollIntoView({
+            behavior: 'smooth'
         });
-    });
+    }
     </script>
-</head>
-<body>
-<div class="container">
-    <h1>Bienvenido, <?php echo htmlspecialchars($_SESSION["mesero_nombre"] ?? '', ENT_QUOTES); ?></h1>
-    <a href="corte.php">Ir al Corte de Caja</a> |
-    <a href="logout.php">Cerrar Sesión</a>
-    <hr>
-
-    <!-- MESAS -->
-    <h2>Mesas</h2>
-    <div style="display:flex; flex-wrap: wrap;">
-        <?php foreach ($mesas as $m): ?>
-        <div style="border:1px solid #ccc; margin:5px; padding:10px;">
-            <h4>Mesa #<?php echo $m['id']; ?></h4>
-            <p>Estado: <?php echo $m['estado']; ?></p>
-            <form method="POST" onsubmit="return confirm('¿Seguro de eliminar esta mesa?');">
-                <input type="hidden" name="accion" value="eliminar_mesa">
-                <input type="hidden" name="id_mesa" value="<?php echo $m['id']; ?>">
-                <button type="submit">Eliminar</button>
-            </form>
-        </div>
-        <?php endforeach; ?>
-    </div>
-    <br>
-    <form method="POST">
-        <input type="hidden" name="accion" value="agregar_mesa">
-        <button type="submit">Agregar Mesa</button>
-    </form>
-    <hr>
-
-    <!-- CREAR PEDIDO -->
-    <h2>Crear Pedido</h2>
-    <form method="POST">
-        <input type="hidden" name="accion" value="crear_pedido_multiple">
-
-        <label>Mesa:</label>
-        <select name="mesa_id" required>
-            <option value="">--Selecciona--</option>
-            <?php foreach ($mesas as $m): ?>
-            <option value="<?php echo $m['id']; ?>">
-                Mesa #<?php echo $m['id']; ?> (<?php echo $m['estado']; ?>)
-            </option>
-            <?php endforeach; ?>
-        </select>
-        <br><br>
-
-        <h4>Platillos del Menú:</h4>
-        <?php foreach ($menus as $mn): ?>
-            <?php 
-            $idP = $mn['id'];
-            $prc = $mn['precio'];
-            ?>
-            <div style="margin-bottom:5px;">
-                <label>
-                    <input 
-                        type="checkbox"
-                        class="check-platillo"
-                        name="items[<?php echo $idP; ?>]"
-                        value="on"
-                        data-price="<?php echo $prc; ?>"
-                        data-id="<?php echo $idP; ?>"
-                    >
-                    <?php echo $mn['nombre']." ($".$mn['precio'].")"; ?>
-                </label>
-                Cantidad:
-                <input 
-                    type="number"
-                    id="qty-<?php echo $idP; ?>"
-                    name="quantity[<?php echo $idP; ?>]"
-                    value="1"
-                    min="1"
-                    class="qty-input"
-                    style="width:60px;"
-                >
-            </div>
-        <?php endforeach; ?>
-
-        <p>Total Estimado: $<span id="estimated-total">0.00</span></p>
-        <button type="submit">Crear Pedido</button>
-    </form>
-    <hr>
-
-    <!-- PEDIDOS PENDIENTES (MESERO) -->
-    <h2>Mis Pedidos Pendientes</h2>
-    <?php if (empty($pendientes)): ?>
-        <p>No tienes pedidos pendientes.</p>
-    <?php else: ?>
-        <?php foreach ($pendientes as $p): ?>
-            <?php $det = obtenerDetallesAgrupados($pdo, $p['id']); ?>
-            <div style="border:1px dashed #888; margin:10px; padding:10px;">
-                <strong>Pedido #<?php echo $p['id']; ?></strong><br>
-                Fecha: <?php echo $p['fecha']; ?><br>
-                Estado: <?php echo $p['estado']; ?><br>
-                Mesa: <?php echo $p['mesa_id']; ?><br>
-                Mesero: <?php echo $p['mesero']; ?><br>
-
-                <h4>Detalle:</h4>
-                <?php if (empty($det)): ?>
-                    <p><em>No hay platillos.</em></p>
-                <?php else: ?>
-                    <?php foreach ($det as $cat => $arr): ?>
-                        <strong><?php echo $cat; ?></strong>
-                        <ul>
-                        <?php foreach ($arr as $itm): ?>
-                            <?php 
-                            $sub = $itm['precio'] * $itm['cantidad'];
-                            ?>
-                            <li><?php echo $itm['nombre']." ($".$itm['precio']." x ".$itm['cantidad'].") = $".$sub; ?></li>
-                        <?php endforeach; ?>
-                        </ul>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-
-                <form method="POST"
-                      onsubmit="return confirm('¿Completar este pedido?');"
-                      style="display:inline;">
-                    <input type="hidden" name="accion" value="completar_pedido">
-                    <input type="hidden" name="pedido_id" value="<?php echo $p['id']; ?>">
-                    <button type="submit">Completar</button>
-                </form>
-                &nbsp;
-                <form method="POST"
-                      onsubmit="return confirm('¿Eliminar este pedido?');"
-                      style="display:inline;">
-                    <input type="hidden" name="accion" value="eliminar_pedido">
-                    <input type="hidden" name="pedido_id" value="<?php echo $p['id']; ?>">
-                    <button type="submit">Eliminar</button>
-                </form>
-            </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
-    <hr>
-
-    <!-- PEDIDOS COMPLETADOS (MESERO) -->
-    <h2>Mis Pedidos Completados</h2>
-    <?php if (empty($completados)): ?>
-        <p>No hay pedidos completados.</p>
-    <?php else: ?>
-        <?php foreach ($completados as $c): ?>
-            <?php $detC = obtenerDetallesAgrupados($pdo, $c['id']); ?>
-            <div style="border:1px solid #ccc; margin:10px; padding:10px;">
-                <strong>Pedido #<?php echo $c['id']; ?></strong><br>
-                Fecha: <?php echo $c['fecha']; ?><br>
-                Estado: <?php echo $c['estado']; ?><br>
-                Total: $<?php echo $c['total']; ?><br>
-                Mesa: <?php echo $c['mesa_id']; ?><br>
-                Mesero: <?php echo $c['mesero']; ?><br>
-
-                <h4>Detalle:</h4>
-                <?php if (empty($detC)): ?>
-                    <p><em>No hay platillos.</em></p>
-                <?php else: ?>
-                    <?php foreach ($detC as $cat => $arr): ?>
-                        <strong><?php echo $cat; ?></strong>
-                        <ul>
-                        <?php foreach ($arr as $itm): ?>
-                            <?php 
-                            $sub = $itm['precio'] * $itm['cantidad'];
-                            ?>
-                            <li><?php echo $itm['nombre']." ($".$itm['precio']." x ".$itm['cantidad'].") = $".$sub; ?></li>
-                        <?php endforeach; ?>
-                        </ul>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
-    <hr>
-
-    <!-- MENÚ (Aquí tenemos lógica antigua + nueva) -->
-    <h2>Menú</h2>
-    <h4>Agregar Nuevo Platillo</h4>
-    <form method="POST">
-        <input type="hidden" name="accion" value="agregar_menu">
-        <label>Nombre:</label>
-        <input type="text" name="nombre" required>
-
-        <label>Precio:</label>
-        <input type="number" step="0.01" name="precio" required>
-
-        <label>Categoría:</label>
-        <select name="categoria" required>
-            <option value="Comida">Comida</option>
-            <option value="Desayuno">Desayuno</option>
-            <option value="Bebidas">Bebidas</option>
-        </select>
-        <button type="submit">Agregar</button>
-    </form>
-
-    <h4>Listado del Menú (Físico + Borrado Lógico + Editar)</h4>
-    <table border="1" cellpadding="5" cellspacing="0">
-        <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Precio</th>
-            <th>Categoría</th>
-            <th>Acciones</th>
-        </tr>
-        <?php foreach ($menus as $mn): ?>
-            <tr>
-                <td><?php echo $mn['id']; ?></td>
-                <td><?php echo $mn['nombre']; ?></td>
-                <td><?php echo $mn['precio']; ?></td>
-                <td><?php echo $mn['categoria']; ?></td>
-                <td>
-
-                    <!-- Botón ELIMINAR (antiguo) -->
-                    <form method="POST"
-                          onsubmit="return confirm('¿Eliminar físicamente este platillo?');"
-                          style="display:inline;">
-                        <input type="hidden" name="accion" value="eliminar_menu">
-                        <input type="hidden" name="id_menu" value="<?php echo $mn['id']; ?>">
-                        <button type="submit">Eliminar Físico</button>
-                    </form>
-
-                    &nbsp;
-
-                    <!-- Botón OCULTAR (borrado lógico) -->
-                    <form method="POST"
-                          onsubmit="return confirm('¿Ocultar este platillo (borrado lógico)?');"
-                          style="display:inline;">
-                        <input type="hidden" name="accion" value="ocultar_menu">
-                        <input type="hidden" name="id_menu" value="<?php echo $mn['id']; ?>">
-                        <button type="submit">Ocultar</button>
-                    </form>
-
-                    &nbsp;
-
-                    <!-- Botón EDITAR (abre formulario) -->
-                    <button 
-                      onclick="mostrarFormEditar(
-                        <?php echo $mn['id'];?>,
-                        '<?php echo addslashes($mn['nombre']);?>',
-                        '<?php echo $mn['precio'];?>',
-                        '<?php echo addslashes($mn['categoria']);?>'
-                      )"
-                    >Editar</button>
-
-                </td>
-            </tr>
-        <?php endforeach; ?>
-    </table>
-
-    <!-- FORMULARIO OCULTO EDITAR -->
-    <div id="formEditar" style="display:none; border:1px solid #aaa; padding:10px; margin:10px 0;">
-        <h4>Editar Platillo</h4>
-        <form method="POST">
-            <input type="hidden" name="accion" value="editar_menu">
-            <input type="hidden" id="id_menu_edit" name="id_menu" value="">
-            
-            <label>Nombre:</label>
-            <input type="text" id="nombre_edit" name="nombreEdit" required>
-            <br><br>
-
-            <label>Precio:</label>
-            <input type="number" step="0.01" id="precio_edit" name="precioEdit" required>
-            <br><br>
-
-            <label>Categoría:</label>
-            <input type="text" id="cat_edit" name="catEdit">
-            <br><br>
-
-            <button type="submit">Guardar Cambios</button>
-            <button type="button" onclick="document.getElementById('formEditar').style.display='none';">
-                Cancelar
-            </button>
-        </form>
-    </div>
-</div>
-
-<script>
-function mostrarFormEditar(id, nombre, precio, categoria) {
-    document.getElementById('formEditar').style.display = 'block';
-    document.getElementById('id_menu_edit').value = id;
-    document.getElementById('nombre_edit').value  = nombre;
-    document.getElementById('precio_edit').value  = precio;
-    document.getElementById('cat_edit').value     = categoria;
-}
-</script>
 </body>
 </html>
+
