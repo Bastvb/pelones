@@ -787,20 +787,25 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
         
         tabs.forEach(tab => {
             tab.addEventListener('click', function(e) {
-                e.preventDefault();
-                
                 const viewId = this.getAttribute('data-view');
-                if (!viewId) return; // Skip for external links
-                
-                // Remove active class from all tabs and views
+                // Si NO existe 'data-view', significa que es un enlace externo (ejemplo 'corte.php'),
+                // así que permitimos que funcione como link normal:
+                if (!viewId) {
+                    return; // no hacemos preventDefault
+                }
+
+                // Caso contrario, es un tab con data-view => evitas la navegación y cambias de vista:
+                e.preventDefault();
+
+                // Lógica de cambiar clases .active en tabs y views
                 tabs.forEach(t => t.classList.remove('active'));
                 views.forEach(v => v.classList.remove('active'));
-                
-                // Add active class to current tab and view
+
                 this.classList.add('active');
                 document.getElementById(viewId).classList.add('active');
             });
         });
+
         
         // Calculate total for new order
         calcTotal();
