@@ -118,7 +118,7 @@ foreach ($registros as $row) {
                                <i class="fas fa-arrow-left"></i> Volver al Inicio
                            </a>
                            <?php if (count($registros) > 0): ?>
-                           <button class="btn btn-primary btn-icon" onclick="window.print()">
+                           <button class="btn btn-primary btn-icon" id="printReportBtn">
                                <i class="fas fa-print"></i> Imprimir Reporte
                            </button>
                            <?php endif; ?>
@@ -164,6 +164,23 @@ foreach ($registros as $row) {
        </main>
    </div>
 
+   <!-- Modal de confirmación de impresión -->
+   <div class="modal" id="printConfirmModal">
+       <div class="modal-content">
+           <div class="modal-header">
+               <h3>Imprimir Reporte</h3>
+               <span class="close-modal" onclick="closeModal('printConfirmModal')">&times;</span>
+           </div>
+           <div class="modal-body">
+               <p>¿Deseas imprimir el reporte de corte de caja?</p>
+           </div>
+           <div class="modal-footer">
+               <button type="button" class="btn btn-primary" onclick="printReport()">Imprimir</button>
+               <button type="button" class="btn btn-secondary" onclick="closeModal('printConfirmModal')">Cancelar</button>
+           </div>
+       </div>
+   </div>
+
    <script>
    document.addEventListener('DOMContentLoaded', function() {
        // Dark mode toggle
@@ -188,7 +205,38 @@ foreach ($registros as $row) {
                this.innerHTML = '<i class="fas fa-moon"></i>';
            }
        });
+
+       // Print button
+       const printBtn = document.getElementById('printReportBtn');
+       if (printBtn) {
+           printBtn.addEventListener('click', function() {
+               showModal('printConfirmModal');
+           });
+       }
    });
+
+   function showModal(modalId) {
+       document.getElementById(modalId).style.display = 'flex';
+   }
+
+   function closeModal(modalId) {
+       document.getElementById(modalId).style.display = 'none';
+   }
+
+   function printReport() {
+       closeModal('printConfirmModal');
+       window.print();
+   }
+
+   // Cerrar modales al hacer clic fuera de ellos
+   window.onclick = function(event) {
+       const modals = document.querySelectorAll('.modal');
+       modals.forEach(modal => {
+           if (event.target == modal) {
+               modal.style.display = "none";
+           }
+       });
+   }
    </script>
 
    <style>
@@ -221,4 +269,6 @@ foreach ($registros as $row) {
    </style>
 </body>
 </html>
+
+
 

@@ -103,6 +103,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </main>
     </div>
 
+    <!-- Modal de error de inicio de sesión -->
+    <div class="modal" id="loginErrorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Error de inicio de sesión</h3>
+                <span class="close-modal" onclick="closeModal('loginErrorModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="loginErrorMessage">Código incorrecto o mesero no encontrado.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeModal('loginErrorModal')">Entendido</button>
+            </div>
+        </div>
+    </div>
+
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Dark mode toggle
@@ -128,11 +144,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         });
 
-        // Focus the input field
+        
         document.getElementById('codigo').focus();
+
+        // Mostrar modal de error si hay un error
+        <?php if (!empty($error)): ?>
+        showLoginErrorModal("<?php echo addslashes($error); ?>");
+        <?php endif; ?>
     });
+
+    function showLoginErrorModal(message) {
+        document.getElementById('loginErrorMessage').textContent = message;
+        document.getElementById('loginErrorModal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Cerrar modales al hacer clic fuera de ellos
+    window.onclick = function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
     </script>
 </body>
 </html>
+
+
 
 

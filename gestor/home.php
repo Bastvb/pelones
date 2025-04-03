@@ -371,13 +371,10 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                         </div>
                                         <p class="mesa-status"><?php echo $m['estado']; ?></p>
                                         <div class="mesa-actions">
-                                            <form method="POST" onsubmit="return confirm('¿Seguro de eliminar esta mesa?');">
-                                                <input type="hidden" name="accion" value="eliminar_mesa">
-                                                <input type="hidden" name="id_mesa" value="<?php echo $m['id']; ?>">
-                                                <button type="submit" class="btn btn-danger btn-sm btn-icon">
-                                                    <i class="fas fa-trash"></i> Eliminar
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-danger btn-sm btn-icon" 
+                                                    onclick="showDeleteMesaModal(<?php echo $m['id']; ?>)">
+                                                <i class="fas fa-trash"></i> Eliminar
+                                            </button>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -393,7 +390,7 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                             <h2><i class="fas fa-plus-circle"></i> Crear Nuevo Pedido</h2>
                         </div>
                         <div class="card-body">
-                            <form method="POST">
+                            <form method="POST" id="nuevoPedidoForm">
                                 <input type="hidden" name="accion" value="crear_pedido_multiple">
 
                                 <div class="form-group">
@@ -454,7 +451,7 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                     <span class="total-label">Total Estimado:</span>
                                     <span class="total-value">$<span id="estimated-total">0.00</span></span>
                                 </div>
-                                <button type="submit" class="btn btn-success btn-lg btn-icon">
+                                <button type="button" class="btn btn-success btn-lg btn-icon" onclick="showCreatePedidoModal()">
                                     <i class="fas fa-save"></i> Crear Pedido
                                 </button>
                             </form>
@@ -520,20 +517,14 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                             </div>
 
                                             <div class="pedido-actions">
-                                                <form method="POST" onsubmit="return confirm('¿Completar este pedido?');">
-                                                    <input type="hidden" name="accion" value="completar_pedido">
-                                                    <input type="hidden" name="pedido_id" value="<?php echo $p['id']; ?>">
-                                                    <button type="submit" class="btn btn-success btn-icon">
-                                                        <i class="fas fa-check"></i> Completar
-                                                    </button>
-                                                </form>
-                                                <form method="POST" onsubmit="return confirm('¿Eliminar este pedido?');">
-                                                    <input type="hidden" name="accion" value="eliminar_pedido">
-                                                    <input type="hidden" name="pedido_id" value="<?php echo $p['id']; ?>">
-                                                    <button type="submit" class="btn btn-danger btn-icon">
-                                                        <i class="fas fa-trash"></i> Eliminar
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-success btn-icon" 
+                                                        onclick="showCompletePedidoModal(<?php echo $p['id']; ?>)">
+                                                    <i class="fas fa-check"></i> Completar
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-icon"
+                                                        onclick="showDeletePedidoModal(<?php echo $p['id']; ?>)">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -623,38 +614,40 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                     <h3>Agregar Nuevo Platillo</h3>
                                 </div>
                                 <div class="card-body">
-                                    <form method="POST" class="row">
+                                    <form method="POST" id="agregarMenuForm">
                                         <input type="hidden" name="accion" value="agregar_menu">
                                         
-                                        <div class="col-md-6 col-lg-4">
-                                            <div class="form-group">
-                                                <label class="form-label">Nombre:</label>
-                                                <input type="text" name="nombre" required class="form-control">
+                                        <div class="row">
+                                            <div class="col-md-6 col-lg-4">
+                                                <div class="form-group">
+                                                    <label class="form-label">Nombre:</label>
+                                                    <input type="text" name="nombre" required class="form-control">
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div class="col-md-6 col-lg-4">
-                                            <div class="form-group">
-                                                <label class="form-label">Precio:</label>
-                                                <input type="number" step="0.01" name="precio" required class="form-control">
+                                            <div class="col-md-6 col-lg-4">
+                                                <div class="form-group">
+                                                    <label class="form-label">Precio:</label>
+                                                    <input type="number" step="0.01" name="precio" required class="form-control">
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div class="col-md-6 col-lg-4">
-                                            <div class="form-group">
-                                                <label class="form-label">Categoría:</label>
-                                                <select name="categoria" required class="form-select">
-                                                    <option value="Comida">Comida</option>
-                                                    <option value="Desayuno">Desayuno</option>
-                                                    <option value="Bebidas">Bebidas</option>
-                                                </select>
+                                            <div class="col-md-6 col-lg-4">
+                                                <div class="form-group">
+                                                    <label class="form-label">Categoría:</label>
+                                                    <select name="categoria" required class="form-select">
+                                                        <option value="Comida">Comida</option>
+                                                        <option value="Desayuno">Desayuno</option>
+                                                        <option value="Bebidas">Bebidas</option>
+                                                    </select>
+                                                </div>
                                             </div>
-                                        </div>
-                                        
-                                        <div class="col-12 mt-3">
-                                            <button type="submit" class="btn btn-primary btn-icon">
-                                                <i class="fas fa-plus"></i> Agregar Platillo
-                                            </button>
+                                            
+                                            <div class="col-12 mt-3">
+                                                <button type="button" class="btn btn-primary btn-icon" onclick="showAddMenuModal()">
+                                                    <i class="fas fa-plus"></i> Agregar Platillo
+                                                </button>
+                                            </div>
                                         </div>
                                     </form>
                                 </div>
@@ -698,24 +691,16 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                                                 </button>
 
                                                                 <!-- Botón OCULTAR -->
-                                                                <form method="POST"
-                                                                    onsubmit="return confirm('¿Ocultar este platillo?');">
-                                                                    <input type="hidden" name="accion" value="ocultar_menu">
-                                                                    <input type="hidden" name="id_menu" value="<?php echo $mn['id']; ?>">
-                                                                    <button type="submit" class="btn btn-sm btn-warning btn-icon-only">
-                                                                        <i class="fas fa-eye-slash"></i>
-                                                                    </button>
-                                                                </form>
+                                                                <button type="button" class="btn btn-sm btn-warning btn-icon-only"
+                                                                    onclick="showHideMenuModal(<?php echo $mn['id']; ?>)">
+                                                                    <i class="fas fa-eye-slash"></i>
+                                                                </button>
 
                                                                 <!-- Botón ELIMINAR -->
-                                                                <form method="POST"
-                                                                    onsubmit="return confirm('¿Eliminar físicamente este platillo?');">
-                                                                    <input type="hidden" name="accion" value="eliminar_menu">
-                                                                    <input type="hidden" name="id_menu" value="<?php echo $mn['id']; ?>">
-                                                                    <button type="submit" class="btn btn-sm btn-danger btn-icon-only">
-                                                                        <i class="fas fa-trash"></i>
-                                                                    </button>
-                                                                </form>
+                                                                <button type="button" class="btn btn-sm btn-danger btn-icon-only"
+                                                                    onclick="showDeleteMenuModal(<?php echo $mn['id']; ?>)">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -733,7 +718,7 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                         <h3>Editar Platillo</h3>
                                     </div>
                                     <div class="card-body">
-                                        <form method="POST">
+                                        <form method="POST" id="editarMenuForm">
                                             <input type="hidden" name="accion" value="editar_menu">
                                             <input type="hidden" id="id_menu_edit" name="id_menu" value="">
                                             
@@ -761,7 +746,7 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                                             </div>
 
                                             <div class="d-flex gap-2 mt-3">
-                                                <button type="submit" class="btn btn-success btn-icon">
+                                                <button type="button" class="btn btn-success btn-icon" onclick="showEditMenuConfirmModal()">
                                                     <i class="fas fa-save"></i> Guardar Cambios
                                                 </button>
                                                 <button type="button" class="btn btn-secondary btn-icon" onclick="document.getElementById('formEditar').style.display='none';">
@@ -777,6 +762,165 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
                 </section>
             </div>
         </main>
+
+        <!-- MODALES -->
+        <!-- Modal para eliminar mesa -->
+        <div class="modal" id="deleteMesaModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar eliminación</h3>
+                    <span class="close-modal" onclick="closeModal('deleteMesaModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas eliminar esta mesa?</p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" id="deleteMesaForm">
+                        <input type="hidden" name="accion" value="eliminar_mesa">
+                        <input type="hidden" name="id_mesa" id="delete_mesa_id" value="">
+                        <button type="submit" class="btn btn-danger">Eliminar</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('deleteMesaModal')">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para crear pedido -->
+        <div class="modal" id="createPedidoModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar pedido</h3>
+                    <span class="close-modal" onclick="closeModal('createPedidoModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas crear este pedido?</p>
+                    <p>Total estimado: $<span id="modal-estimated-total">0.00</span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="submitForm('nuevoPedidoForm')">Crear Pedido</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('createPedidoModal')">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para completar pedido -->
+        <div class="modal" id="completePedidoModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Completar pedido</h3>
+                    <span class="close-modal" onclick="closeModal('completePedidoModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas marcar este pedido como completado?</p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" id="completePedidoForm">
+                        <input type="hidden" name="accion" value="completar_pedido">
+                        <input type="hidden" name="pedido_id" id="complete_pedido_id" value="">
+                        <button type="submit" class="btn btn-success">Completar</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('completePedidoModal')">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para eliminar pedido -->
+        <div class="modal" id="deletePedidoModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Eliminar pedido</h3>
+                    <span class="close-modal" onclick="closeModal('deletePedidoModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas eliminar este pedido?</p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" id="deletePedidoForm">
+                        <input type="hidden" name="accion" value="eliminar_pedido">
+                        <input type="hidden" name="pedido_id" id="delete_pedido_id" value="">
+                        <button type="submit" class="btn btn-danger">Eliminar</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('deletePedidoModal')">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para agregar menú -->
+        <div class="modal" id="addMenuModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Agregar platillo</h3>
+                    <span class="close-modal" onclick="closeModal('addMenuModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Confirmas agregar este platillo al menú?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="submitForm('agregarMenuForm')">Agregar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addMenuModal')">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para ocultar menú -->
+        <div class="modal" id="hideMenuModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Ocultar platillo</h3>
+                    <span class="close-modal" onclick="closeModal('hideMenuModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas ocultar este platillo?</p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" id="hideMenuForm">
+                        <input type="hidden" name="accion" value="ocultar_menu">
+                        <input type="hidden" name="id_menu" id="hide_menu_id" value="">
+                        <button type="submit" class="btn btn-warning">Ocultar</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('hideMenuModal')">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para eliminar menú -->
+        <div class="modal" id="deleteMenuModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Eliminar platillo</h3>
+                    <span class="close-modal" onclick="closeModal('deleteMenuModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas eliminar físicamente este platillo?</p>
+                    <p class="text-danger">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" id="deleteMenuForm">
+                        <input type="hidden" name="accion" value="eliminar_menu">
+                        <input type="hidden" name="id_menu" id="delete_menu_id" value="">
+                        <button type="submit" class="btn btn-danger">Eliminar</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('deleteMenuModal')">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para confirmar edición de menú -->
+        <div class="modal" id="editMenuConfirmModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Guardar cambios</h3>
+                    <span class="close-modal" onclick="closeModal('editMenuConfirmModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>¿Confirmas los cambios realizados al platillo?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="submitForm('editarMenuForm')">Guardar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editMenuConfirmModal')">Cancelar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -866,7 +1010,71 @@ function obtenerDetallesAgrupados(PDO $pdo, $pedidoId) {
             behavior: 'smooth'
         });
     }
+
+    // Funciones para modales
+    function showModal(modalId) {
+        document.getElementById(modalId).style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    function submitForm(formId) {
+        document.getElementById(formId).submit();
+    }
+
+    // Funciones específicas para cada modal
+    function showDeleteMesaModal(mesaId) {
+        document.getElementById('delete_mesa_id').value = mesaId;
+        showModal('deleteMesaModal');
+    }
+
+    function showCreatePedidoModal() {
+        document.getElementById('modal-estimated-total').textContent = 
+            document.getElementById('estimated-total').textContent;
+        showModal('createPedidoModal');
+    }
+
+    function showCompletePedidoModal(pedidoId) {
+        document.getElementById('complete_pedido_id').value = pedidoId;
+        showModal('completePedidoModal');
+    }
+
+    function showDeletePedidoModal(pedidoId) {
+        document.getElementById('delete_pedido_id').value = pedidoId;
+        showModal('deletePedidoModal');
+    }
+
+    function showAddMenuModal() {
+        showModal('addMenuModal');
+    }
+
+    function showHideMenuModal(menuId) {
+        document.getElementById('hide_menu_id').value = menuId;
+        showModal('hideMenuModal');
+    }
+
+    function showDeleteMenuModal(menuId) {
+        document.getElementById('delete_menu_id').value = menuId;
+        showModal('deleteMenuModal');
+    }
+
+    function showEditMenuConfirmModal() {
+        showModal('editMenuConfirmModal');
+    }
+
+    // Cerrar modales al hacer clic fuera de ellos
+    window.onclick = function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
     </script>
 </body>
 </html>
+
 
